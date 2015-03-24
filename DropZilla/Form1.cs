@@ -188,9 +188,17 @@ namespace DropZilla
                 AddFolder sf = new AddFolder();
                 if (sf.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
-                    // Create a new folder
-                    client.Core.FileOperations.CreateFolderAsync(((string)t.Tag).TrimEnd('/') + "/" + sf.FolderName).Wait();
-                    LoadDirectory((string)t.Tag, t);
+                    if (sf.isNew)
+                    {
+                        // Create a new folder
+                        client.Core.FileOperations.CreateFolderAsync(((string)t.Tag).TrimEnd('/') + "/" + sf.FolderName).Wait();
+                        LoadDirectory((string)t.Tag, t);
+                    }
+                    else
+                    {
+                        pan_perform.Visible = true;
+                        bgw_Upload.RunWorkerAsync(new object[] { t, new List<string>() { (string)t.Tag, sf.FolderName } });
+                    }
                 }
             }
         }
