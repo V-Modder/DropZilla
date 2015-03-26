@@ -13,7 +13,6 @@ DropboxRestAPI aims towards being the most comprehensive implementation for the 
   - Support for OAuth 2
   - Support for Metadata operations, including [PUT upload](https://www.dropbox.com/developers/core/docs#files_put), [chunked uploads](https://www.dropbox.com/developers/core/docs#chunked-upload) and chunked download
 + Full implementation of the new [Business API](https://www.dropbox.com/developers/business/docs)
-+ Added download status callback function
 
 ## Contact
 
