@@ -13,3 +13,4 @@ DropZilla aims to have a portable solution to interact with your dropbox, withou
 ##ToDo
 
 - [ ]Add Drag 'n Drop to move files and folders
+- [X]Add Drag 'n Drop to move files and folders
