@@ -160,6 +160,9 @@
     <Compile Include="RequestsGenerators\RequestGenerator.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\readme.md">
+      <Link>readme.md</Link>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
