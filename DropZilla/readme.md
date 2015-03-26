@@ -9,3 +9,7 @@ DropZilla aims to have a portable solution to interact with your dropbox, withou
 + Easy to use user interface
 + Full support for Drag 'n Drop
 + All Fileoperations could be done
+
+##ToDo
+
+- [ ]Add Drag 'n Drop to move files and folders

@@ -224,12 +224,6 @@
     <None Include="Pics\icon.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Pics\Plus-Icon-5.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Pics\imageedit.png" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Pics\file_add.png" />
   </ItemGroup>
   <ItemGroup>

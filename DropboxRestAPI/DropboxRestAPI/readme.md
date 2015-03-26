@@ -100,5 +100,3 @@ foreach (var searchResult in searchResults)
     Console.WriteLine("Found: " + searchResult.path);
 }
 ```
-
-1005

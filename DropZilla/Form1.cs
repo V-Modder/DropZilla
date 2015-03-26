@@ -16,6 +16,7 @@ namespace DropZilla
 {
     public partial class Form1 : Form
     {
+        #region Vars
         [System.Runtime.InteropServices.DllImport("Shell32.dll")]
         private static extern int SHChangeNotify(int eventId, int flags, IntPtr item1, IntPtr item2);
         private const string CFSTR_INETURLA = "UniformResourceLocator";
@@ -28,6 +29,7 @@ namespace DropZilla
         private BackgroundWorker bgw_Download;
         private BackgroundWorker bgw_DownloadFiles;
         private BackgroundWorker bgw_DownloadOnDrag;
+        private BackgroundWorker bgw_Move;
         private const string DRAG_SOURCE_PREFIX = "__DragNDrop__Temp__";
         private object objDragItem;
         private FileSystemWatcher tempDirectoryWatcher;
@@ -37,6 +39,7 @@ namespace DropZilla
         private bool isFolderDrag = false;
         private List<string> FilesToDownload;
         private delegate void SetControlPropertyThreadSafeDelegate(Control control, string propertyName, object propertyValue);
+        #endregion
 
         #region Form Control
         public Form1()
@@ -75,6 +78,11 @@ namespace DropZilla
             bgw_DownloadOnDrag.ProgressChanged += bgw_DownloadOnDrag_ProgressChanged;
             bgw_DownloadOnDrag.RunWorkerCompleted += bgw_DownloadOnDrag_RunWorkerCompleted;
             bgw_DownloadOnDrag.WorkerReportsProgress = true;
+            bgw_Move = new BackgroundWorker();
+            bgw_Move.DoWork += bgw_Move_DoWork;
+            bgw_Move.ProgressChanged += bgw_Move_ProgressChanged;
+            bgw_Move.RunWorkerCompleted += bgw_Move_RunWorkerCompleted;
+            bgw_Move.WorkerReportsProgress = true;
             pan_perform.BringToFront();
         }
 
@@ -172,11 +180,12 @@ namespace DropZilla
             if (openFileDialog1.ShowDialog() != System.Windows.Forms.DialogResult.OK || trv_folders.SelectedNode == null)
                 return;
 
-            foreach (string s in openFileDialog1.FileNames)
-            {
-                UploadFile(s, (string)trv_folders.SelectedNode.Tag + "/" + Path.GetFileName(s));
-            }
-            LoadFiles((string)trv_folders.SelectedNode.Tag);
+            pan_perform.Visible = true;
+            lbl_progress.Text = "Uploading...";
+            List<string> l = new List<string>();
+            l.Add((string)trv_folders.SelectedNode.Tag);
+            l.AddRange(openFileDialog1.FileNames);
+            bgw_Upload.RunWorkerAsync(new object[] { trv_folders.SelectedNode, l });
         }
 
         private void btn_addFolder_Click(object sender, EventArgs e)
@@ -329,6 +338,163 @@ namespace DropZilla
             txt_Name.ShowDropDown();
         }
 
+        #region Form resize
+        private void splitContainer1_SplitterMoved(object sender, SplitterEventArgs e)
+        {
+            btn_addFiles.Location = new System.Drawing.Point(e.SplitX + 15, 35);
+            btn_deleteFiles.Location = new System.Drawing.Point(e.SplitX + 62, 35);
+        }
+
+        private void Form1_SizeChanged(object sender, EventArgs e)
+        {
+            pan_perform.Size = new System.Drawing.Size(this.Size.Width - 29, this.Size.Height - 76);
+        }
+
+        private void panel1_SizeChanged(object sender, EventArgs e)
+        {
+            pan_Explorer.Size = new System.Drawing.Size(pan_perform.Size.Width - 13, pan_perform.Size.Height - 48);
+            lbl_sort.Location = new System.Drawing.Point(pan_perform.Size.Width - 166, lbl_sort.Location.Y);
+            chk_view.Location = new System.Drawing.Point(lbl_sort.Location.X - 41, chk_view.Location.Y);
+            cmb_sort.Location = new System.Drawing.Point(lbl_sort.Location.X + 85, cmb_sort.Location.Y);
+        }
+        #endregion
+
+        #region Drag'n Drop
+        private void ltv_files_DragDrop(object sender, System.Windows.Forms.DragEventArgs e)
+        {
+            if (e.Effect == System.Windows.Forms.DragDropEffects.Copy || e.Effect == System.Windows.Forms.DragDropEffects.Move)
+            {
+                string[] f = (string[])e.Data.GetData(System.Windows.Forms.DataFormats.FileDrop);
+                string[] files = new string[f.Length];
+                f.CopyTo(files, 0);
+                List<string> l = new List<string>();
+                l.Add((string)trv_folders.SelectedNode.Tag);
+                l.AddRange(files);
+                pan_perform.Visible = true;
+                lbl_progress.Text = "Uploading...";
+                bgw_Upload.RunWorkerAsync(new object[] { trv_folders.SelectedNode, l });
+            }
+        }
+
+        private void ltv_files_DragEnter(object sender, System.Windows.Forms.DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(System.Windows.Forms.DataFormats.FileDrop))
+                e.Effect = System.Windows.Forms.DragDropEffects.Copy;
+            else
+                e.Effect = System.Windows.Forms.DragDropEffects.None;
+        }
+
+        private void ltv_files_MouseDown(object sender, System.Windows.Forms.MouseEventArgs e)
+        {
+            ClearDragData();
+            if (e.Button == MouseButtons.Left && ltv_files.SelectedItems.Count > 0)
+            {
+                objDragItem = ltv_files.SelectedItems[0].Text;
+                itemDragStart = true;
+                isFolderDrag = false;
+            }
+        }
+
+        private void ltv_files_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.None)
+            {
+                FilesToDownload.Clear();
+                return;
+            }
+            if (itemDragStart && objDragItem != null)
+            {
+                foreach (ListViewItem lvitem in ltv_files.SelectedItems)
+                {
+                    FilesToDownload.Add((string)lvitem.Tag);
+                }
+                //lbl_progress.Text = "Downloading...";
+                //pan_perform.Visible = true;
+                dragItemTempFileName = string.Format("{0}{1}{2}.tmp", Path.GetTempPath(), DRAG_SOURCE_PREFIX, ltv_files.SelectedItems[0].Text);
+                try
+                {
+                    CreateDragItemTempFile(dragItemTempFileName);
+
+                    string[] fileList = new string[] { dragItemTempFileName };
+                    System.Windows.Forms.DataObject fileDragData = new System.Windows.Forms.DataObject(System.Windows.Forms.DataFormats.FileDrop, fileList);
+                    DoDragDrop(fileDragData, System.Windows.Forms.DragDropEffects.Move);
+
+                    ClearDragData();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message, "DragNDrop Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void trv_folders_MouseDown(object sender, System.Windows.Forms.MouseEventArgs e)
+        {
+            ClearDragData();
+            if (e.Button == MouseButtons.Left && trv_folders.SelectedNode != null)
+            {
+                objDragItem = trv_folders.SelectedNode.Text;
+                itemDragStart = true;
+                isFolderDrag = true;
+            }
+        }
+
+        private void trv_folders_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(System.Windows.Forms.DataFormats.FileDrop) && this.itemDragStart)
+                e.Effect = System.Windows.Forms.DragDropEffects.Move;
+            else
+                e.Effect = System.Windows.Forms.DragDropEffects.None;
+        }
+
+        private void trv_folders_DragDrop(object sender, DragEventArgs e)
+        {
+            if (e.Effect == System.Windows.Forms.DragDropEffects.Copy || e.Effect == System.Windows.Forms.DragDropEffects.Move || this.itemDragStart)
+            {
+                TreeNode targetNode = trv_folders.GetNodeAt(trv_folders.PointToClient(new System.Drawing.Point(e.X, e.Y)));
+                //TreeNode node 
+                List<string> l = new List<string>();
+                l.Add((string)targetNode.Tag);
+                foreach (ListViewItem lvItem in ltv_files.SelectedItems)
+                {
+                    l.Add((string)lvItem.Tag);
+                }
+                pan_perform.Visible = true;
+                lbl_progress.Text = "Moving...";
+                bgw_Move.RunWorkerAsync(new object[] { trv_folders.SelectedNode, l });
+            }
+        }
+
+        private void trv_folders_ItemDrag(object sender, ItemDragEventArgs e)
+        {
+            if (e.Button == MouseButtons.None)
+                return;
+
+            //if (itemDragStart && objDragItem != null)
+            //{
+            FilesToDownload.Add((string)trv_folders.SelectedNode.Tag);
+            lbl_progress.Text = "Downloading...";
+            pan_perform.Visible = true;
+            dragItemTempFileName = string.Format("{0}{1}{2}.tmp", Path.GetTempPath(), DRAG_SOURCE_PREFIX, trv_folders.SelectedNode.Text);
+            try
+            {
+                CreateDragItemTempFile(dragItemTempFileName);
+
+                string[] fileList = new string[] { dragItemTempFileName };
+                System.Windows.Forms.DataObject fileDragData = new System.Windows.Forms.DataObject(System.Windows.Forms.DataFormats.FileDrop, fileList);
+                DoDragDrop(fileDragData, System.Windows.Forms.DragDropEffects.Move);
+
+                ClearDragData();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "DragNDrop Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            //}
+        }
+        #endregion        
+        #endregion
+
         #region BackgroundWorker
         void bgw_DownloadFiles_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
@@ -360,11 +526,12 @@ namespace DropZilla
         void bgw_DownloadOnDrag_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             SetControlPropertyThreadSafe(pan_perform, "Visible", false);
-            SetControlPropertyThreadSafe(progressBar1, "Style", ProgressBarStyle.Marquee);
         }
 
         void bgw_DownloadOnDrag_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
+            if (!pan_perform.Visible)
+                pan_perform.Visible = true;
             progressBar1.Value = e.ProgressPercentage;
         }
 
@@ -417,11 +584,39 @@ namespace DropZilla
             progressBar1.Value = e.ProgressPercentage;
         }
 
+        void bgw_Move_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            pan_perform.Visible = false;
+            TreeNode t = (TreeNode)e.Result;
+            LoadDirectory((string)t.Tag, t);
+        }
+
+        void bgw_Move_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            progressBar1.Value = e.ProgressPercentage;
+        }
+
+        void bgw_Move_DoWork(object sender, DoWorkEventArgs e)
+        {
+            object[] objects = (object[])e.Argument;
+            List<string> files = (List<string>)objects[1];
+            string targetPath = files[0];
+            if (!targetPath.EndsWith("/"))
+                targetPath += "/";
+            files.RemoveAt(0);
+
+            for (int i = 0; i < files.Count; i++)
+            {
+                client.Core.FileOperations.MoveAsync(files[i], targetPath + GetFileName(files[i])).Wait();
+                bgw_Move.ReportProgress(i * 100 / files.Count);
+            }
+            e.Result = objects[0];
+        }
+
         void bgw_Upload_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             object[] objects = (object[])e.Result;
             pan_perform.Visible = false;
-            progressBar1.Style = ProgressBarStyle.Continuous;
             lbl_progress.Text = "Uploading...";
             LoadDirectory((string)objects[0], (TreeNode)objects[1]);
         }
@@ -459,144 +654,6 @@ namespace DropZilla
         {
             progressBar1.Value = e.ProgressPercentage;
         }
-        #endregion
-
-        #region Form resize
-        private void splitContainer1_SplitterMoved(object sender, SplitterEventArgs e)
-        {
-            btn_addFiles.Location = new System.Drawing.Point(e.SplitX + 15, 35);
-            btn_deleteFiles.Location = new System.Drawing.Point(e.SplitX + 62, 35);
-        }
-
-        private void Form1_SizeChanged(object sender, EventArgs e)
-        {
-            pan_perform.Size = new System.Drawing.Size(this.Size.Width - 29, this.Size.Height - 76);
-        }
-
-        private void panel1_SizeChanged(object sender, EventArgs e)
-        {
-            pan_Explorer.Size = new System.Drawing.Size(pan_perform.Size.Width - 13, pan_perform.Size.Height - 48);
-            lbl_sort.Location = new System.Drawing.Point(pan_perform.Size.Width - 166, lbl_sort.Location.Y);
-            chk_view.Location = new System.Drawing.Point(lbl_sort.Location.X - 41, chk_view.Location.Y);
-            cmb_sort.Location = new System.Drawing.Point(lbl_sort.Location.X + 85, cmb_sort.Location.Y);
-        }
-        #endregion
-
-        #region Drag'n Drop
-        private void ltv_files_DragDrop(object sender, System.Windows.Forms.DragEventArgs e)
-        {
-            if (e.Effect == System.Windows.Forms.DragDropEffects.Copy || e.Effect == System.Windows.Forms.DragDropEffects.Move)
-            {
-                string[] f = (string[])e.Data.GetData(System.Windows.Forms.DataFormats.FileDrop);
-                string[] files = new string[f.Length];
-                f.CopyTo(files, 0);
-                List<string> l = new List<string>();
-                l.Add((string)trv_folders.SelectedNode.Tag);
-                l.AddRange(files);
-                pan_perform.Visible = true;
-                lbl_progress.Text = "Uploading...";
-                progressBar1.Style = ProgressBarStyle.Continuous;
-                bgw_Upload.RunWorkerAsync(new object[] { trv_folders.SelectedNode, l });
-            }
-        }
-
-        private void ltv_files_DragEnter(object sender, System.Windows.Forms.DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(System.Windows.Forms.DataFormats.FileDrop))
-                e.Effect = System.Windows.Forms.DragDropEffects.Copy;
-            else
-                e.Effect = System.Windows.Forms.DragDropEffects.None;
-        }
-
-        private void ltv_files_MouseDown(object sender, System.Windows.Forms.MouseEventArgs e)
-        {
-            ClearDragData();
-            if (e.Button == MouseButtons.Left && ltv_files.SelectedItems.Count > 0)
-            {
-                objDragItem = ltv_files.SelectedItems[0].Text;
-                itemDragStart = true;
-                isFolderDrag = false;
-            }
-        }
-
-        private void ltv_files_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.None)
-            {
-                FilesToDownload.Clear();
-                return;
-            }
-            if (itemDragStart && objDragItem != null)
-            {
-                foreach (ListViewItem lvitem in ltv_files.SelectedItems)
-                {
-                    FilesToDownload.Add((string)lvitem.Tag);
-                }
-                lbl_progress.Text = "Downloading...";
-                //progressBar1.Maximum = FilesToDownload.Count;
-                progressBar1.Value = 0;
-                progressBar1.Style = ProgressBarStyle.Continuous;
-                pan_perform.Visible = true;
-                dragItemTempFileName = string.Format("{0}{1}{2}.tmp", Path.GetTempPath(), DRAG_SOURCE_PREFIX, ltv_files.SelectedItems[0].Text);
-                try
-                {
-                    CreateDragItemTempFile(dragItemTempFileName);
-
-                    string[] fileList = new string[] { dragItemTempFileName };
-                    System.Windows.Forms.DataObject fileDragData = new System.Windows.Forms.DataObject(System.Windows.Forms.DataFormats.FileDrop, fileList);
-                    DoDragDrop(fileDragData, System.Windows.Forms.DragDropEffects.Move);
-
-                    ClearDragData();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message, "DragNDrop Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-        }
-
-        private void trv_folders_MouseDown(object sender, System.Windows.Forms.MouseEventArgs e)
-        {
-            ClearDragData();
-            if (e.Button == MouseButtons.Left && trv_folders.SelectedNode != null)
-            {
-                objDragItem = trv_folders.SelectedNode.Text;
-                itemDragStart = true;
-                isFolderDrag = true;
-            }
-        }
-
-        private void trv_folders_ItemDrag(object sender, ItemDragEventArgs e)
-        {
-            if (e.Button == MouseButtons.None)
-                return;
-
-            //if (itemDragStart && objDragItem != null)
-            //{
-            FilesToDownload.Add((string)trv_folders.SelectedNode.Tag);
-            lbl_progress.Text = "Downloading...";
-            progressBar1.Maximum = 1;
-            progressBar1.Value = 0;
-            progressBar1.Style = ProgressBarStyle.Continuous;
-            pan_perform.Visible = true;
-            dragItemTempFileName = string.Format("{0}{1}{2}.tmp", Path.GetTempPath(), DRAG_SOURCE_PREFIX, trv_folders.SelectedNode.Text);
-            try
-            {
-                CreateDragItemTempFile(dragItemTempFileName);
-
-                string[] fileList = new string[] { dragItemTempFileName };
-                System.Windows.Forms.DataObject fileDragData = new System.Windows.Forms.DataObject(System.Windows.Forms.DataFormats.FileDrop, fileList);
-                DoDragDrop(fileDragData, System.Windows.Forms.DragDropEffects.Move);
-
-                ClearDragData();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "DragNDrop Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            //}
-        }
-        #endregion        
         #endregion
 
         #region Helper Methods
@@ -678,6 +735,14 @@ namespace DropZilla
                 s = s.Substring(0, s.Length - 1);
             }
             s = s.Substring(s.LastIndexOf("\\") + 1);
+
+            return s;
+        }
+
+        private string GetFileName(string path)
+        {
+            string s = path;
+            s = s.Substring(s.LastIndexOf("/") + 1);
 
             return s;
         }
@@ -799,6 +864,9 @@ namespace DropZilla
                 }
                 //node.Nodes.AddRange(t);
             }
+
+            var accountInfo = await client.Core.Accounts.AccountInfoAsync();
+            txt_Quota.Text = ToFileSize(accountInfo.quota_info.normal + accountInfo.quota_info.shared) + " von " + ToFileSize(accountInfo.quota_info.quota);
         }
 
         private async Task LoadDropbox()

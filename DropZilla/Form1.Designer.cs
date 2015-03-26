@@ -227,6 +227,8 @@
             this.trv_folders.TabIndex = 5;
             this.trv_folders.ItemDrag += new System.Windows.Forms.ItemDragEventHandler(this.trv_folders_ItemDrag);
             this.trv_folders.NodeMouseClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.trv_folders_NodeMouseClick);
+            this.trv_folders.DragDrop += new System.Windows.Forms.DragEventHandler(this.trv_folders_DragDrop);
+            this.trv_folders.DragEnter += new System.Windows.Forms.DragEventHandler(this.trv_folders_DragEnter);
             this.trv_folders.KeyDown += new System.Windows.Forms.KeyEventHandler(this.trv_folders_KeyDown);
             this.trv_folders.MouseDown += new System.Windows.Forms.MouseEventHandler(this.trv_folders_MouseDown);
             // 
