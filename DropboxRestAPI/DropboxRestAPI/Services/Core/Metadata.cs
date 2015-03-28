@@ -77,7 +77,7 @@ namespace DropboxRestAPI.Services.Core
                 IEnumerable<string> etags;
                 if (restResponse.Headers.TryGetValues("etag", out etags))
                     etag = etags.FirstOrDefault();
-
+                targetStream.SetLength((long)length);
                 long? read = 0;
                 bool hasMore = true;
                 do

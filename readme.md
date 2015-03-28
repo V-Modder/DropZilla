@@ -13,5 +13,6 @@ DropZilla aims to have a portable solution to interact with your dropbox, withou
 ##ToDo
 
 - [ ] Check code for thread safe execution
+- [ ] Show down- and uploadspeed 
 - [x] Add Drag 'n Drop to move files and folders
 - [x] Add Drag 'n Drop to download files

@@ -475,8 +475,17 @@ namespace DropZilla
                 string filename = s.Substring(s.LastIndexOf("/") + 1);
                 using (Stream stream = new FileStream(localPath + "\\" + filename, FileMode.Create))
                 {
-                    Progress<DropboxRestAPI.Services.Core.MyTaskProgressReport> progressIndicator = new Progress<DropboxRestAPI.Services.Core.MyTaskProgressReport>(ReportProgress);
-                    client.Core.Metadata.FilesAsync(s, stream, progress: progressIndicator).Wait();
+                    client.Core.Metadata.FilesAsync(s, stream);
+
+                    while (stream.Position < stream.Length)
+                    {
+                        if (stream.Length != 0)
+                        {
+                            int x = (int)Math.Round(((double)stream.Position / (double)stream.Length) * 100, 0);
+                            bgw_DownloadOnDrag.ReportProgress(x);
+                        }
+                        Thread.Sleep(100);
+                    }
                 }
             }
         }
@@ -520,8 +529,17 @@ namespace DropZilla
                         string filename = s.Substring(s.LastIndexOf("/") + 1);
                         using (Stream stream = new FileStream(dropPath + "\\" + filename, FileMode.Create))
                         {
-                            Progress<DropboxRestAPI.Services.Core.MyTaskProgressReport> progressIndicator = new Progress<DropboxRestAPI.Services.Core.MyTaskProgressReport>(ReportProgress);
-                            client.Core.Metadata.FilesAsync(s, stream, progress: progressIndicator).Wait();
+                            client.Core.Metadata.FilesAsync(s, stream);
+
+                            while (stream.Position < stream.Length)
+                            {
+                                if (stream.Length != 0)
+                                {
+                                    int x = (int)Math.Round(((double)stream.Position / (double)stream.Length) * 100, 0);
+                                    bgw_DownloadOnDrag.ReportProgress(x);
+                                }
+                                Thread.Sleep(100);
+                            }
                         }
                     }
                 }
@@ -675,8 +693,17 @@ namespace DropZilla
                 {
                     using (Stream stream = new FileStream(Path.Combine(localPath, file.Name), FileMode.Create))
                     {
-                        Progress<DropboxRestAPI.Services.Core.MyTaskProgressReport> progressIndicator = new Progress<DropboxRestAPI.Services.Core.MyTaskProgressReport>(ReportProgress);
-                        client.Core.Metadata.FilesAsync(file.path, stream, progressIndicator).Wait();
+                        client.Core.Metadata.FilesAsync(file.path, stream);
+
+                        while (stream.Position < stream.Length)
+                        {
+                            if (stream.Length != 0)
+                            {
+                                int x = (int)Math.Round(((double)stream.Position / (double)stream.Length) * 100, 0);
+                                bgw_DownloadOnDrag.ReportProgress(x);
+                            }
+                            Thread.Sleep(100);
+                        }
                     }
                 }
             }
