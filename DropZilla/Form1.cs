@@ -7,10 +7,10 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Runtime.InteropServices;
 
 namespace DropZilla
 {
@@ -25,11 +25,6 @@ namespace DropZilla
         private ToolStripProgressBar toolBar;
         private ToolStripMenuItem txt_Quota;
         private ToolStripMenuItem txt_LogOff;
-        private BackgroundWorker bgw_Upload;
-        private BackgroundWorker bgw_Download;
-        private BackgroundWorker bgw_DownloadFiles;
-        private BackgroundWorker bgw_DownloadOnDrag;
-        private BackgroundWorker bgw_Move;
         private const string DRAG_SOURCE_PREFIX = "__DragNDrop__Temp__";
         private object objDragItem;
         private FileSystemWatcher tempDirectoryWatcher;
@@ -58,31 +53,6 @@ namespace DropZilla
             txt_LogOff.Click += txt_LogOff_Click;
             txt_Name.DropDownItems.Add(txt_LogOff);
             cmb_sort.SelectedIndex = 0;
-            bgw_Upload = new BackgroundWorker();
-            bgw_Upload.DoWork += bgw_Upload_DoWork;
-            bgw_Upload.RunWorkerCompleted += bgw_Upload_RunWorkerCompleted;
-            bgw_Upload.ProgressChanged += bgw_Upload_ProgressChanged;
-            bgw_Upload.WorkerReportsProgress = true;
-            bgw_Download = new BackgroundWorker();
-            bgw_Download.DoWork += bgw_Download_DoWork;
-            bgw_Download.RunWorkerCompleted += bgw_Download_RunWorkerCompleted;
-            bgw_Download.ProgressChanged += bgw_Download_ProgressChanged;
-            bgw_Download.WorkerReportsProgress = true;
-            bgw_DownloadFiles = new BackgroundWorker();
-            bgw_DownloadFiles.DoWork += bgw_DownloadFiles_DoWork;
-            bgw_DownloadFiles.ProgressChanged += bgw_DownloadFiles_ProgressChanged;
-            bgw_DownloadFiles.RunWorkerCompleted += bgw_DownloadFiles_RunWorkerCompleted;
-            bgw_DownloadFiles.WorkerReportsProgress = true;
-            bgw_DownloadOnDrag = new BackgroundWorker();
-            bgw_DownloadOnDrag.DoWork += bgw_DownloadOnDrag_DoWork;
-            bgw_DownloadOnDrag.ProgressChanged += bgw_DownloadOnDrag_ProgressChanged;
-            bgw_DownloadOnDrag.RunWorkerCompleted += bgw_DownloadOnDrag_RunWorkerCompleted;
-            bgw_DownloadOnDrag.WorkerReportsProgress = true;
-            bgw_Move = new BackgroundWorker();
-            bgw_Move.DoWork += bgw_Move_DoWork;
-            bgw_Move.ProgressChanged += bgw_Move_ProgressChanged;
-            bgw_Move.RunWorkerCompleted += bgw_Move_RunWorkerCompleted;
-            bgw_Move.WorkerReportsProgress = true;
             pan_perform.BringToFront();
         }
 
@@ -161,9 +131,9 @@ namespace DropZilla
             ltv_files.SmallImageList.Images.Add("page_white_word", DropZilla.Properties.Resources.word48);
             #endregion
 
-#if ShowAcceptForm
+            #if ShowAcceptForm
                 File.Delete(myPath);
-#endif
+            #endif
 
             //Setting the tempDirectoryWatcher to monitor the creation of a file from our application
             tempDirectoryWatcher = new FileSystemWatcher();
@@ -239,7 +209,6 @@ namespace DropZilla
                     TreeNode parent = t.Parent;
                     client.Core.FileOperations.DeleteAsync((string)t.Tag).Wait();
                     parent.Nodes.Remove(t);
-                    //LoadDirectory((string)parent.Tag, parent);
                 }
             }
         }
@@ -277,8 +246,6 @@ namespace DropZilla
             {
                 if (folderBrowserDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
-                    //client.Core.Metadata.MetadataAsync("/", list: true).Wait();
-                    //DownloadFolder(Path.Combine(folderBrowserDialog1.SelectedPath, trv_folders.SelectedNode.Text), (string)trv_folders.SelectedNode.Tag);
                     bgw_Download.RunWorkerAsync(new object[] { Path.Combine(folderBrowserDialog1.SelectedPath, trv_folders.SelectedNode.Text), (string)trv_folders.SelectedNode.Tag });
                 }
             }
@@ -290,10 +257,6 @@ namespace DropZilla
                     for (int i = 0; i < ltv_files.SelectedItems.Count; i++)
                     {
                         sFiles[i] = (string)ltv_files.SelectedItems[i].Tag;
-                        //using (FileStream stream = new FileStream(Path.Combine(folderBrowserDialog1.SelectedPath, ltv_files.SelectedItems[i].Text), FileMode.Create))
-                        //{
-                        //    client.Core.Metadata.FilesAsync((string)ltv_files.SelectedItems[i].Tag, stream);
-                        //}
                     }
                     bgw_DownloadFiles.RunWorkerAsync(new object[] { folderBrowserDialog1.SelectedPath, sFiles });
                 }
@@ -531,8 +494,8 @@ namespace DropZilla
         void bgw_DownloadOnDrag_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             if (!pan_perform.Visible)
-                pan_perform.Visible = true;
-            progressBar1.Value = e.ProgressPercentage;
+                SetControlPropertyThreadSafe(pan_perform, "Visible", true);
+            SetControlPropertyThreadSafe(progressBar1, "Value", e.ProgressPercentage);
         }
 
         void bgw_DownloadOnDrag_DoWork(object sender, DoWorkEventArgs e)
@@ -765,7 +728,7 @@ namespace DropZilla
             return count;
         }
 
-        public static string GetFileTypeDescription(string fileNameOrExtension)
+        private static string GetFileTypeDescription(string fileNameOrExtension)
         {
             NativeMethods.SHFILEINFO shfi;
             if (IntPtr.Zero != NativeMethods.SHGetFileInfo(
@@ -778,6 +741,12 @@ namespace DropZilla
                 return shfi.szTypeName;
             }
             return null;
+        }
+
+        private void Init_pan_perform()
+        {
+            pan_perform.Visible = true;
+            progressBar1.Value = 0;
         }
 
         private bool isFolder(string Path)
@@ -1126,6 +1095,8 @@ namespace DropZilla
 
         private void FileWatcherCreated(object sender, FileSystemEventArgs e)
         {
+            new Thread(() => pan_perform.Invoke((MethodInvoker)(() => Init_pan_perform()))).Start();
+               
             bgw_DownloadOnDrag.RunWorkerAsync(e.FullPath);
         }
 

@@ -29,6 +29,11 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+            this.bgw_Upload = new System.ComponentModel.BackgroundWorker();
+            this.bgw_Download = new System.ComponentModel.BackgroundWorker();
+            this.bgw_DownloadFiles = new System.ComponentModel.BackgroundWorker();
+            this.bgw_DownloadOnDrag = new System.ComponentModel.BackgroundWorker();
+            this.bgw_Move = new System.ComponentModel.BackgroundWorker();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.pan_perform = new System.Windows.Forms.Panel();
             this.lbl_progress = new System.Windows.Forms.Label();
@@ -64,6 +69,42 @@
             this.splitContainer1.SuspendLayout();
             this.cms_download.SuspendLayout();
             this.SuspendLayout();
+
+            //
+            //bgw_Upload
+            //
+            bgw_Upload.DoWork += bgw_Upload_DoWork;
+            bgw_Upload.RunWorkerCompleted += bgw_Upload_RunWorkerCompleted;
+            bgw_Upload.ProgressChanged += bgw_Upload_ProgressChanged;
+            bgw_Upload.WorkerReportsProgress = true;
+            //
+            //bgw_Download
+            //
+            bgw_Download.DoWork += bgw_Download_DoWork;
+            bgw_Download.RunWorkerCompleted += bgw_Download_RunWorkerCompleted;
+            bgw_Download.ProgressChanged += bgw_Download_ProgressChanged;
+            bgw_Download.WorkerReportsProgress = true;
+            //
+            //bgw_DownloadFiles
+            //
+            bgw_DownloadFiles.DoWork += bgw_DownloadFiles_DoWork;
+            bgw_DownloadFiles.ProgressChanged += bgw_DownloadFiles_ProgressChanged;
+            bgw_DownloadFiles.RunWorkerCompleted += bgw_DownloadFiles_RunWorkerCompleted;
+            bgw_DownloadFiles.WorkerReportsProgress = true;
+            //
+            //bgw_DownloadOnDrag
+            //
+            bgw_DownloadOnDrag.DoWork += bgw_DownloadOnDrag_DoWork;
+            bgw_DownloadOnDrag.ProgressChanged += bgw_DownloadOnDrag_ProgressChanged;
+            bgw_DownloadOnDrag.RunWorkerCompleted += bgw_DownloadOnDrag_RunWorkerCompleted;
+            bgw_DownloadOnDrag.WorkerReportsProgress = true;
+            //
+            //bgw_Move
+            //
+            bgw_Move.DoWork += bgw_Move_DoWork;
+            bgw_Move.ProgressChanged += bgw_Move_ProgressChanged;
+            bgw_Move.RunWorkerCompleted += bgw_Move_RunWorkerCompleted;
+            bgw_Move.WorkerReportsProgress = true;
             // 
             // openFileDialog1
             // 
@@ -337,6 +378,11 @@
 
         #endregion
 
+        private System.ComponentModel.BackgroundWorker bgw_Upload;
+        private System.ComponentModel.BackgroundWorker bgw_Download;
+        private System.ComponentModel.BackgroundWorker bgw_DownloadFiles;
+        private System.ComponentModel.BackgroundWorker bgw_DownloadOnDrag;
+        private System.ComponentModel.BackgroundWorker bgw_Move;
         private System.Windows.Forms.Button btn_addFiles;
         private System.Windows.Forms.OpenFileDialog openFileDialog1;
         private System.Windows.Forms.Button btn_deleteFolder;
