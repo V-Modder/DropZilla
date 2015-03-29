@@ -17,9 +17,6 @@ namespace DropZilla
     public partial class Form1 : Form
     {
         #region Vars
-        [System.Runtime.InteropServices.DllImport("Shell32.dll")]
-        private static extern int SHChangeNotify(int eventId, int flags, IntPtr item1, IntPtr item2);
-        private const string CFSTR_INETURLA = "UniformResourceLocator";
         private const string myPath = "token";
         private Client client;
         private ToolStripProgressBar toolBar;
@@ -476,13 +473,16 @@ namespace DropZilla
                 using (Stream stream = new FileStream(localPath + "\\" + filename, FileMode.Create))
                 {
                     client.Core.Metadata.FilesAsync(s, stream);
+                    System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
 
-                    while (stream.Position < stream.Length)
+                    while (stream.Position < stream.Length || stream.Length == 0)
                     {
                         if (stream.Length != 0)
                         {
+                            if(!sw.IsRunning)
+                                sw.Start();
                             int x = (int)Math.Round(((double)stream.Position / (double)stream.Length) * 100, 0);
-                            bgw_DownloadOnDrag.ReportProgress(x);
+                            bgw_DownloadFiles.ReportProgress(x, new object[] { stream.Position, sw.ElapsedMilliseconds });
                         }
                         Thread.Sleep(100);
                     }
@@ -493,6 +493,8 @@ namespace DropZilla
         void bgw_DownloadFiles_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             progressBar1.Value = e.ProgressPercentage;
+            object[] obj = (object[])e.UserState;
+            lbl_speed.Text = ToSpeed(Convert.ToDouble(obj[0]) / (Convert.ToDouble(obj[1]) / 1000));
         }
 
         void bgw_DownloadOnDrag_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -505,6 +507,8 @@ namespace DropZilla
             if (!pan_perform.Visible)
                 SetControlPropertyThreadSafe(pan_perform, "Visible", true);
             SetControlPropertyThreadSafe(progressBar1, "Value", e.ProgressPercentage);
+            object[] obj = (object[])e.UserState;
+            SetControlPropertyThreadSafe(lbl_speed, "Text", ToSpeed(Convert.ToDouble(obj[0]) / (Convert.ToDouble(obj[1]) / 1000)));
         }
 
         void bgw_DownloadOnDrag_DoWork(object sender, DoWorkEventArgs e)
@@ -530,13 +534,16 @@ namespace DropZilla
                         using (Stream stream = new FileStream(dropPath + "\\" + filename, FileMode.Create))
                         {
                             client.Core.Metadata.FilesAsync(s, stream);
+                            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
 
-                            while (stream.Position < stream.Length)
+                            while (stream.Position < stream.Length || stream.Length == 0)
                             {
                                 if (stream.Length != 0)
                                 {
+                                    if (!sw.IsRunning)
+                                        sw.Start();
                                     int x = (int)Math.Round(((double)stream.Position / (double)stream.Length) * 100, 0);
-                                    bgw_DownloadOnDrag.ReportProgress(x);
+                                    bgw_DownloadOnDrag.ReportProgress(x, new object[] { stream.Position, sw.ElapsedMilliseconds });
                                 }
                                 Thread.Sleep(100);
                             }
@@ -563,6 +570,8 @@ namespace DropZilla
         void bgw_Download_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             progressBar1.Value = e.ProgressPercentage;
+            object[] obj = (object[])e.UserState;
+            lbl_speed.Text = ToSpeed(Convert.ToDouble(obj[0]) / (Convert.ToDouble(obj[1]) / 1000));
         }
 
         void bgw_Move_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -628,12 +637,15 @@ namespace DropZilla
                     UploadFolder(files[i], path);
                 }
             }
+            Thread.Sleep(1000);
             e.Result = new object[] { path, objects[0] };
         }
 
         void bgw_Upload_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             progressBar1.Value = e.ProgressPercentage;
+            object[] obj = (object[])e.UserState;
+            lbl_speed.Text = ToSpeed(Convert.ToDouble(obj[0]) / (Convert.ToDouble(obj[1]) / 1000));
         }
         #endregion
 
@@ -694,13 +706,19 @@ namespace DropZilla
                     using (Stream stream = new FileStream(Path.Combine(localPath, file.Name), FileMode.Create))
                     {
                         client.Core.Metadata.FilesAsync(file.path, stream);
+                        System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
 
-                        while (stream.Position < stream.Length)
+                        while (stream.Position < stream.Length || stream.Length == 0)
                         {
                             if (stream.Length != 0)
                             {
+                                if (!sw.IsRunning)
+                                    sw.Start();
                                 int x = (int)Math.Round(((double)stream.Position / (double)stream.Length) * 100, 0);
-                                bgw_DownloadOnDrag.ReportProgress(x);
+                                if(bgw_DownloadOnDrag.IsBusy)
+                                    bgw_DownloadOnDrag.ReportProgress(x, new object[] { stream.Position, sw.ElapsedMilliseconds });
+                                else
+                                    bgw_Download.ReportProgress(x, new object[] { stream.Position, sw.ElapsedMilliseconds });
                             }
                             Thread.Sleep(100);
                         }
@@ -985,9 +1003,6 @@ namespace DropZilla
 
         public static void RefreshWindowsExplorer()
         {
-            // Refresh the desktop
-            SHChangeNotify(0x8000000, 0x1000, IntPtr.Zero, IntPtr.Zero);
-
             // Refresh any open explorer windows
             // based on http://stackoverflow.com/questions/2488727/refresh-windows-explorer-in-win7
             Guid CLSID_ShellApplication = new Guid("13709620-C279-11CE-A49E-444553540000");
@@ -1010,6 +1025,13 @@ namespace DropZilla
                     itemType.InvokeMember("Refresh", System.Reflection.BindingFlags.InvokeMethod, null, item, null);
                 }
             }
+            //Refresh desktop by passing F5 key to its handle
+            NativeMethods.SHChangeNotify(0x8000000, 0x1000, IntPtr.Zero, IntPtr.Zero);
+            //IntPtr d = NativeMethods.FindWindow("Progman", "Program Manager");
+            //d = NativeMethods.FindWindowEx(d, IntPtr.Zero, "SHELLDLL_DefView", null);
+            //d = NativeMethods.FindWindowEx(d, IntPtr.Zero, "SysListView32", null);
+            //NativeMethods.PostMessage(d, 0x100, new IntPtr(0x74), IntPtr.Zero);//WM_KEYDOWN = 0x100  VK_F5 = 0x74
+            //NativeMethods.PostMessage(d, 0x101, new IntPtr(0x74), new IntPtr(1 << 31));//WM_KEYUP = 0x101
         }
 
         private void ReportProgress(DropboxRestAPI.Services.Core.MyTaskProgressReport progress)
@@ -1053,14 +1075,34 @@ namespace DropZilla
             return size2.ToString() + eee[i - 1];
         }
 
+        private string ToSpeed(double bytesPerSecond)
+        {
+            double size = bytesPerSecond;
+            string[] ary = { "Byte/s", "kByte/s", "MByte/s" };
+            int i = 0;
+            do
+            {
+                i++;
+                size /= 1000;
+            } while (size >= 1);
+            if (i >= 2)
+                size = Math.Round(size * 1000, 2);
+            else
+                size = Math.Round(size * 1000, 1);
+            return string.Format("{0} {1}",size.ToString("0.00"),  ary[i - 1]);
+        }
+
         private void UploadFile(string file, string path)
         {
             using (Stream fileStream = System.IO.File.OpenRead(file))
             {
+                System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
                 var uploadedFile = client.Core.Metadata.FilesPutAsync(fileStream, path);
-                while (fileStream.Position < fileStream.Length)
+                while (fileStream.Position < fileStream.Length || fileStream.Length == 0)
                 {
-                    bgw_Upload.ReportProgress(Convert.ToInt32((Convert.ToDouble(fileStream.Position) / Convert.ToDouble(fileStream.Length)) * 100));
+                    if (!sw.IsRunning)
+                        sw.Start();
+                    bgw_Upload.ReportProgress(Convert.ToInt32((Convert.ToDouble(fileStream.Position) / Convert.ToDouble(fileStream.Length)) * 100), new object[] { fileStream.Position, sw.ElapsedMilliseconds });
                     Thread.Sleep(100);
                 }
             }
@@ -1091,10 +1133,13 @@ namespace DropZilla
             {
                 using (var fileStream = System.IO.File.OpenRead(File))
                 {
+                    System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
                     client.Core.Metadata.FilesPutAsync(fileStream, newPath + "/" + Path.GetFileName(File));
-                    while (fileStream.Position < fileStream.Length)
+                    while (fileStream.Position < fileStream.Length || fileStream.Length == 0)
                     {
-                        bgw_Upload.ReportProgress(Convert.ToInt32((Convert.ToDouble(fileStream.Position) / Convert.ToDouble(fileStream.Length)) * 100));
+                        if (!sw.IsRunning)
+                            sw.Start();
+                        bgw_Upload.ReportProgress(Convert.ToInt32((Convert.ToDouble(fileStream.Position) / Convert.ToDouble(fileStream.Length)) * 100), new object[] { fileStream.Position, sw.ElapsedMilliseconds });
                         Thread.Sleep(100);
                     }
                 }

@@ -9,8 +9,20 @@ namespace DropZilla
 {
     class NativeMethods
     {
+        [System.Runtime.InteropServices.DllImport("Shell32.dll")]
+        public static extern int SHChangeNotify(int eventId, int flags, IntPtr item1, IntPtr item2);
+
         [DllImport("shell32")]
         public static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, out SHFILEINFO psfi, uint cbFileInfo, uint flags);
+
+        [DllImport("user32")]
+        public static extern int PostMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam);
+        
+        [DllImport("user32")]
+        public static extern IntPtr FindWindow(string className, string caption);
+
+        [DllImport("user32")]
+        public static extern IntPtr FindWindowEx(IntPtr parent, IntPtr startChild, string className, string caption);
 
         [StructLayout(LayoutKind.Sequential)]
         public struct SHFILEINFO

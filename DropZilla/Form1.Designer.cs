@@ -36,6 +36,8 @@
             this.bgw_Move = new System.ComponentModel.BackgroundWorker();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.pan_perform = new System.Windows.Forms.Panel();
+            this.lbl_speed = new System.Windows.Forms.Label();
+            this.lbl_speedText = new System.Windows.Forms.Label();
             this.lbl_progress = new System.Windows.Forms.Label();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.mainMenuStrip = new System.Windows.Forms.MenuStrip();
@@ -69,42 +71,41 @@
             this.splitContainer1.SuspendLayout();
             this.cms_download.SuspendLayout();
             this.SuspendLayout();
-
-            //
-            //bgw_Upload
-            //
-            bgw_Upload.DoWork += bgw_Upload_DoWork;
-            bgw_Upload.RunWorkerCompleted += bgw_Upload_RunWorkerCompleted;
-            bgw_Upload.ProgressChanged += bgw_Upload_ProgressChanged;
-            bgw_Upload.WorkerReportsProgress = true;
-            //
-            //bgw_Download
-            //
-            bgw_Download.DoWork += bgw_Download_DoWork;
-            bgw_Download.RunWorkerCompleted += bgw_Download_RunWorkerCompleted;
-            bgw_Download.ProgressChanged += bgw_Download_ProgressChanged;
-            bgw_Download.WorkerReportsProgress = true;
-            //
-            //bgw_DownloadFiles
-            //
-            bgw_DownloadFiles.DoWork += bgw_DownloadFiles_DoWork;
-            bgw_DownloadFiles.ProgressChanged += bgw_DownloadFiles_ProgressChanged;
-            bgw_DownloadFiles.RunWorkerCompleted += bgw_DownloadFiles_RunWorkerCompleted;
-            bgw_DownloadFiles.WorkerReportsProgress = true;
-            //
-            //bgw_DownloadOnDrag
-            //
-            bgw_DownloadOnDrag.DoWork += bgw_DownloadOnDrag_DoWork;
-            bgw_DownloadOnDrag.ProgressChanged += bgw_DownloadOnDrag_ProgressChanged;
-            bgw_DownloadOnDrag.RunWorkerCompleted += bgw_DownloadOnDrag_RunWorkerCompleted;
-            bgw_DownloadOnDrag.WorkerReportsProgress = true;
-            //
-            //bgw_Move
-            //
-            bgw_Move.DoWork += bgw_Move_DoWork;
-            bgw_Move.ProgressChanged += bgw_Move_ProgressChanged;
-            bgw_Move.RunWorkerCompleted += bgw_Move_RunWorkerCompleted;
-            bgw_Move.WorkerReportsProgress = true;
+            // 
+            // bgw_Upload
+            // 
+            this.bgw_Upload.WorkerReportsProgress = true;
+            this.bgw_Upload.DoWork += new System.ComponentModel.DoWorkEventHandler(this.bgw_Upload_DoWork);
+            this.bgw_Upload.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.bgw_Upload_ProgressChanged);
+            this.bgw_Upload.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.bgw_Upload_RunWorkerCompleted);
+            // 
+            // bgw_Download
+            // 
+            this.bgw_Download.WorkerReportsProgress = true;
+            this.bgw_Download.DoWork += new System.ComponentModel.DoWorkEventHandler(this.bgw_Download_DoWork);
+            this.bgw_Download.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.bgw_Download_ProgressChanged);
+            this.bgw_Download.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.bgw_Download_RunWorkerCompleted);
+            // 
+            // bgw_DownloadFiles
+            // 
+            this.bgw_DownloadFiles.WorkerReportsProgress = true;
+            this.bgw_DownloadFiles.DoWork += new System.ComponentModel.DoWorkEventHandler(this.bgw_DownloadFiles_DoWork);
+            this.bgw_DownloadFiles.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.bgw_DownloadFiles_ProgressChanged);
+            this.bgw_DownloadFiles.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.bgw_DownloadFiles_RunWorkerCompleted);
+            // 
+            // bgw_DownloadOnDrag
+            // 
+            this.bgw_DownloadOnDrag.WorkerReportsProgress = true;
+            this.bgw_DownloadOnDrag.DoWork += new System.ComponentModel.DoWorkEventHandler(this.bgw_DownloadOnDrag_DoWork);
+            this.bgw_DownloadOnDrag.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.bgw_DownloadOnDrag_ProgressChanged);
+            this.bgw_DownloadOnDrag.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.bgw_DownloadOnDrag_RunWorkerCompleted);
+            // 
+            // bgw_Move
+            // 
+            this.bgw_Move.WorkerReportsProgress = true;
+            this.bgw_Move.DoWork += new System.ComponentModel.DoWorkEventHandler(this.bgw_Move_DoWork);
+            this.bgw_Move.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.bgw_Move_ProgressChanged);
+            this.bgw_Move.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.bgw_Move_RunWorkerCompleted);
             // 
             // openFileDialog1
             // 
@@ -113,6 +114,8 @@
             // 
             // pan_perform
             // 
+            this.pan_perform.Controls.Add(this.lbl_speed);
+            this.pan_perform.Controls.Add(this.lbl_speedText);
             this.pan_perform.Controls.Add(this.lbl_progress);
             this.pan_perform.Controls.Add(this.progressBar1);
             this.pan_perform.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -122,6 +125,26 @@
             this.pan_perform.TabIndex = 7;
             this.pan_perform.Visible = false;
             this.pan_perform.SizeChanged += new System.EventHandler(this.panel1_SizeChanged);
+            // 
+            // lbl_speed
+            // 
+            this.lbl_speed.AutoSize = true;
+            this.lbl_speed.Font = new System.Drawing.Font("Calibri", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbl_speed.Location = new System.Drawing.Point(342, 303);
+            this.lbl_speed.Name = "lbl_speed";
+            this.lbl_speed.Size = new System.Drawing.Size(33, 19);
+            this.lbl_speed.TabIndex = 13;
+            this.lbl_speed.Text = "      ";
+            // 
+            // lbl_speedText
+            // 
+            this.lbl_speedText.AutoSize = true;
+            this.lbl_speedText.Font = new System.Drawing.Font("Calibri", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbl_speedText.Location = new System.Drawing.Point(217, 303);
+            this.lbl_speedText.Name = "lbl_speedText";
+            this.lbl_speedText.Size = new System.Drawing.Size(119, 19);
+            this.lbl_speedText.TabIndex = 12;
+            this.lbl_speedText.Text = "Geschwindigkeit:";
             // 
             // lbl_progress
             // 
@@ -140,7 +163,6 @@
             this.progressBar1.Size = new System.Drawing.Size(662, 23);
             this.progressBar1.Style = System.Windows.Forms.ProgressBarStyle.Continuous;
             this.progressBar1.TabIndex = 10;
-            this.progressBar1.Value = 100;
             // 
             // mainMenuStrip
             // 
@@ -409,6 +431,8 @@
         private System.Windows.Forms.CheckBox chk_view;
         private System.Windows.Forms.ColumnHeader SizeHeader;
         private System.Windows.Forms.Timer timer1;
+        private System.Windows.Forms.Label lbl_speed;
+        private System.Windows.Forms.Label lbl_speedText;
     }
 }
 
