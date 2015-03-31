@@ -62,6 +62,7 @@
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             this.chk_view = new System.Windows.Forms.CheckBox();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
+            this.btn_cancel = new System.Windows.Forms.Button();
             this.pan_perform.SuspendLayout();
             this.mainMenuStrip.SuspendLayout();
             this.pan_Explorer.SuspendLayout();
@@ -114,14 +115,15 @@
             // 
             // pan_perform
             // 
+            this.pan_perform.Controls.Add(this.btn_cancel);
             this.pan_perform.Controls.Add(this.lbl_speed);
             this.pan_perform.Controls.Add(this.lbl_speedText);
             this.pan_perform.Controls.Add(this.lbl_progress);
             this.pan_perform.Controls.Add(this.progressBar1);
             this.pan_perform.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pan_perform.Location = new System.Drawing.Point(0, 0);
+            this.pan_perform.Location = new System.Drawing.Point(0, 24);
             this.pan_perform.Name = "pan_perform";
-            this.pan_perform.Size = new System.Drawing.Size(704, 597);
+            this.pan_perform.Size = new System.Drawing.Size(704, 573);
             this.pan_perform.TabIndex = 7;
             this.pan_perform.Visible = false;
             this.pan_perform.SizeChanged += new System.EventHandler(this.panel1_SizeChanged);
@@ -361,11 +363,22 @@
             this.chk_view.UseVisualStyleBackColor = true;
             this.chk_view.CheckedChanged += new System.EventHandler(this.chk_view_CheckedChanged);
             // 
+            // btn_cancel
+            // 
+            this.btn_cancel.Location = new System.Drawing.Point(261, 356);
+            this.btn_cancel.Name = "btn_cancel";
+            this.btn_cancel.Size = new System.Drawing.Size(114, 31);
+            this.btn_cancel.TabIndex = 14;
+            this.btn_cancel.Text = "Abbrechen";
+            this.btn_cancel.UseVisualStyleBackColor = true;
+            this.btn_cancel.Click += new System.EventHandler(this.btn_cancel_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(704, 597);
+            this.Controls.Add(this.pan_perform);
             this.Controls.Add(this.cmb_sort);
             this.Controls.Add(this.chk_view);
             this.Controls.Add(this.lbl_sort);
@@ -375,7 +388,6 @@
             this.Controls.Add(this.btn_addFiles);
             this.Controls.Add(this.btn_addFolder);
             this.Controls.Add(this.mainMenuStrip);
-            this.Controls.Add(this.pan_perform);
             this.KeyPreview = true;
             this.MinimumSize = new System.Drawing.Size(500, 400);
             this.Name = "Form1";
@@ -433,6 +445,7 @@
         private System.Windows.Forms.Timer timer1;
         private System.Windows.Forms.Label lbl_speed;
         private System.Windows.Forms.Label lbl_speedText;
+        private System.Windows.Forms.Button btn_cancel;
     }
 }
 
