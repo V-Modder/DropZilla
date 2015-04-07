@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.bgw_Upload = new System.ComponentModel.BackgroundWorker();
             this.bgw_Download = new System.ComponentModel.BackgroundWorker();
             this.bgw_DownloadFiles = new System.ComponentModel.BackgroundWorker();
@@ -36,6 +37,9 @@
             this.bgw_Move = new System.ComponentModel.BackgroundWorker();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.pan_perform = new System.Windows.Forms.Panel();
+            this.lbl_fileCountMax = new System.Windows.Forms.Label();
+            this.lbl_fileCount = new System.Windows.Forms.Label();
+            this.btn_cancel = new System.Windows.Forms.Button();
             this.lbl_speed = new System.Windows.Forms.Label();
             this.lbl_speedText = new System.Windows.Forms.Label();
             this.lbl_progress = new System.Windows.Forms.Label();
@@ -54,6 +58,7 @@
             this.trv_folders = new System.Windows.Forms.TreeView();
             this.cms_download = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItem2 = new System.Windows.Forms.ToolStripMenuItem();
             this.ltv_files = new System.Windows.Forms.ListView();
             this.NameHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.TypeHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -62,7 +67,8 @@
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             this.chk_view = new System.Windows.Forms.CheckBox();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.btn_cancel = new System.Windows.Forms.Button();
+            this.txt_search = new System.Windows.Forms.TextBox();
+            this.btn_search = new System.Windows.Forms.Label();
             this.pan_perform.SuspendLayout();
             this.mainMenuStrip.SuspendLayout();
             this.pan_Explorer.SuspendLayout();
@@ -115,6 +121,8 @@
             // 
             // pan_perform
             // 
+            this.pan_perform.Controls.Add(this.lbl_fileCountMax);
+            this.pan_perform.Controls.Add(this.lbl_fileCount);
             this.pan_perform.Controls.Add(this.btn_cancel);
             this.pan_perform.Controls.Add(this.lbl_speed);
             this.pan_perform.Controls.Add(this.lbl_speedText);
@@ -127,6 +135,36 @@
             this.pan_perform.TabIndex = 7;
             this.pan_perform.Visible = false;
             this.pan_perform.SizeChanged += new System.EventHandler(this.panel1_SizeChanged);
+            // 
+            // lbl_fileCountMax
+            // 
+            this.lbl_fileCountMax.AutoSize = true;
+            this.lbl_fileCountMax.Font = new System.Drawing.Font("Calibri", 12F);
+            this.lbl_fileCountMax.Location = new System.Drawing.Point(326, 243);
+            this.lbl_fileCountMax.Name = "lbl_fileCountMax";
+            this.lbl_fileCountMax.Size = new System.Drawing.Size(32, 19);
+            this.lbl_fileCountMax.TabIndex = 16;
+            this.lbl_fileCountMax.Text = "von";
+            // 
+            // lbl_fileCount
+            // 
+            this.lbl_fileCount.AutoSize = true;
+            this.lbl_fileCount.Font = new System.Drawing.Font("Calibri", 12F);
+            this.lbl_fileCount.Location = new System.Drawing.Point(240, 243);
+            this.lbl_fileCount.Name = "lbl_fileCount";
+            this.lbl_fileCount.Size = new System.Drawing.Size(44, 19);
+            this.lbl_fileCount.TabIndex = 15;
+            this.lbl_fileCount.Text = "Datei";
+            // 
+            // btn_cancel
+            // 
+            this.btn_cancel.Location = new System.Drawing.Point(261, 356);
+            this.btn_cancel.Name = "btn_cancel";
+            this.btn_cancel.Size = new System.Drawing.Size(114, 31);
+            this.btn_cancel.TabIndex = 14;
+            this.btn_cancel.Text = "Abbrechen";
+            this.btn_cancel.UseVisualStyleBackColor = true;
+            this.btn_cancel.Click += new System.EventHandler(this.btn_cancel_Click);
             // 
             // lbl_speed
             // 
@@ -300,16 +338,25 @@
             // cms_download
             // 
             this.cms_download.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripMenuItem1});
+            this.toolStripMenuItem1,
+            this.toolStripMenuItem2});
             this.cms_download.Name = "cms_download";
-            this.cms_download.Size = new System.Drawing.Size(129, 26);
+            this.cms_download.Size = new System.Drawing.Size(145, 48);
+            this.cms_download.Opening += new System.ComponentModel.CancelEventHandler(this.cms_download_Opening);
             this.cms_download.ItemClicked += new System.Windows.Forms.ToolStripItemClickedEventHandler(this.cms_download_ItemClicked);
             // 
             // toolStripMenuItem1
             // 
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-            this.toolStripMenuItem1.Size = new System.Drawing.Size(128, 22);
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(144, 22);
             this.toolStripMenuItem1.Text = "Download";
+            // 
+            // toolStripMenuItem2
+            // 
+            this.toolStripMenuItem2.Name = "toolStripMenuItem2";
+            this.toolStripMenuItem2.Size = new System.Drawing.Size(144, 22);
+            this.toolStripMenuItem2.Text = "Öffne Ordner";
+            this.toolStripMenuItem2.Visible = false;
             // 
             // ltv_files
             // 
@@ -363,30 +410,51 @@
             this.chk_view.UseVisualStyleBackColor = true;
             this.chk_view.CheckedChanged += new System.EventHandler(this.chk_view_CheckedChanged);
             // 
-            // btn_cancel
+            // txt_search
             // 
-            this.btn_cancel.Location = new System.Drawing.Point(261, 356);
-            this.btn_cancel.Name = "btn_cancel";
-            this.btn_cancel.Size = new System.Drawing.Size(114, 31);
-            this.btn_cancel.TabIndex = 14;
-            this.btn_cancel.Text = "Abbrechen";
-            this.btn_cancel.UseVisualStyleBackColor = true;
-            this.btn_cancel.Click += new System.EventHandler(this.btn_cancel_Click);
+            this.txt_search.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.Suggest;
+            this.txt_search.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.CustomSource;
+            this.txt_search.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.txt_search.Font = new System.Drawing.Font("Tahoma", 8.25F, ((System.Drawing.FontStyle)((System.Drawing.FontStyle.Bold | System.Drawing.FontStyle.Italic))), System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txt_search.ForeColor = System.Drawing.Color.Gray;
+            this.txt_search.Location = new System.Drawing.Point(524, 4);
+            this.txt_search.Name = "txt_search";
+            this.txt_search.Size = new System.Drawing.Size(150, 14);
+            this.txt_search.TabIndex = 9;
+            this.txt_search.Text = "Suchen...";
+            this.txt_search.Enter += new System.EventHandler(this.txt_search_Enter);
+            this.txt_search.KeyUp += new System.Windows.Forms.KeyEventHandler(this.txt_search_KeyUp);
+            this.txt_search.Leave += new System.EventHandler(this.txt_search_Leave);
+            // 
+            // btn_search
+            // 
+            this.btn_search.BackColor = System.Drawing.SystemColors.Window;
+            this.btn_search.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.btn_search.Image = ((System.Drawing.Image)(resources.GetObject("btn_search.Image")));
+            this.btn_search.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.btn_search.Location = new System.Drawing.Point(522, 0);
+            this.btn_search.Name = "btn_search";
+            this.btn_search.Size = new System.Drawing.Size(177, 24);
+            this.btn_search.TabIndex = 8;
+            this.btn_search.LocationChanged += new System.EventHandler(this.btn_search_LocationChanged);
+            this.btn_search.Click += new System.EventHandler(this.btn_search_Click);
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(704, 597);
-            this.Controls.Add(this.pan_perform);
             this.Controls.Add(this.cmb_sort);
             this.Controls.Add(this.chk_view);
             this.Controls.Add(this.lbl_sort);
             this.Controls.Add(this.pan_Explorer);
             this.Controls.Add(this.btn_deleteFiles);
             this.Controls.Add(this.btn_deleteFolder);
+            this.Controls.Add(this.txt_search);
+            this.Controls.Add(this.btn_search);
             this.Controls.Add(this.btn_addFiles);
             this.Controls.Add(this.btn_addFolder);
+            this.Controls.Add(this.pan_perform);
             this.Controls.Add(this.mainMenuStrip);
             this.KeyPreview = true;
             this.MinimumSize = new System.Drawing.Size(500, 400);
@@ -446,6 +514,11 @@
         private System.Windows.Forms.Label lbl_speed;
         private System.Windows.Forms.Label lbl_speedText;
         private System.Windows.Forms.Button btn_cancel;
+        private System.Windows.Forms.Label lbl_fileCount;
+        private System.Windows.Forms.Label lbl_fileCountMax;
+        private System.Windows.Forms.TextBox txt_search;
+        private System.Windows.Forms.Label btn_search;
+        private System.Windows.Forms.ToolStripMenuItem toolStripMenuItem2;
     }
 }
 

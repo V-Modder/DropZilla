@@ -27,7 +27,9 @@ namespace DropZilla
         private string dragItemTempFileName = string.Empty;
         private bool itemDragStart = false;
         private bool isFolderDrag = false;
+        private bool SearchActive = false;
         private bool CancelOpearation = false;
+        private uint fileCounter; 
         private List<string> FilesToDownload;
         private delegate void SetControlPropertyThreadSafeDelegate(Control control, string propertyName, object propertyValue);
         #endregion
@@ -48,6 +50,7 @@ namespace DropZilla
             txt_LogOff.Text = "Abmelden";
             txt_LogOff.Click += txt_LogOff_Click;
             txt_Name.DropDownItems.Add(txt_LogOff);
+            mainMenuStrip.ImageList = new ImageList();
             cmb_sort.SelectedIndex = 0;
             pan_perform.BringToFront();
         }
@@ -127,9 +130,9 @@ namespace DropZilla
             ltv_files.SmallImageList.Images.Add("page_white_word", DropZilla.Properties.Resources.word48);
             #endregion
 
-#if ShowAcceptForm
+            #if ShowAcceptForm
                 File.Delete(myPath);
-#endif
+            #endif
 
             //Setting the tempDirectoryWatcher to monitor the creation of a file from our application
             tempDirectoryWatcher = new FileSystemWatcher();
@@ -214,6 +217,12 @@ namespace DropZilla
             }
         }
 
+        private void btn_search_Click(object sender, EventArgs e)
+        {
+            if (Cursor.Position.X >= 150 && txt_search.Text != "" && txt_search.Text != "Suchen...")
+                Search();
+        }
+
         private void chk_view_CheckedChanged(object sender, EventArgs e)
         {
             if (chk_view.Checked)
@@ -241,27 +250,69 @@ namespace DropZilla
             ContextMenuStrip cms = (ContextMenuStrip)sender;
             var contr = cms.SourceControl as ListView;
             cms.Close();
-            pan_perform.Visible = true;
-
+            SearchActive = false;
+            
             if (contr == null)
             {
                 if (folderBrowserDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
+                    pan_perform.Visible = true;
+                    lbl_fileCountMax.Text = "von " + GetFileCount((string)trv_folders.SelectedNode.Tag, true).ToString();
                     bgw_Download.RunWorkerAsync(new object[] { Path.Combine(folderBrowserDialog1.SelectedPath, trv_folders.SelectedNode.Text), (string)trv_folders.SelectedNode.Tag });
                 }
             }
             else
             {
-                if (folderBrowserDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                if (e.ClickedItem.Text == "Download")
                 {
-                    string[] sFiles = new string[ltv_files.SelectedItems.Count];
-                    for (int i = 0; i < ltv_files.SelectedItems.Count; i++)
+                    pan_perform.Visible = true;
+                    if (folderBrowserDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                     {
-                        sFiles[i] = (string)ltv_files.SelectedItems[i].Tag;
+                        string[] sFiles = new string[ltv_files.SelectedItems.Count];
+                        for (int i = 0; i < ltv_files.SelectedItems.Count; i++)
+                        {
+                            sFiles[i] = (string)ltv_files.SelectedItems[i].Tag;
+                        }
+                        lbl_fileCountMax.Text = "von " + sFiles.Length.ToString();
+                        bgw_DownloadFiles.RunWorkerAsync(new object[] { folderBrowserDialog1.SelectedPath, sFiles });
                     }
-                    bgw_DownloadFiles.RunWorkerAsync(new object[] { folderBrowserDialog1.SelectedPath, sFiles });
+                }
+                else
+                {
+                    TreeNode node = trv_folders.Nodes[0];
+                    string s = ltv_files.SelectedItems[0].Tag.ToString();
+                    string[] comp = s.Substring(0, s.LastIndexOf("/")).Split(new char[] { '/' });
+                    for (int i = 1; i < comp.Length; i++)
+                    {
+                        TreeNode newnode = node.Nodes[comp[i]];
+                        if (newnode == null)
+                        {
+                            TreeNode child = new TreeNode();
+                            child.Name = comp[i];
+                            child.Text = comp[i];
+                            string path = "";
+                            for (int j = 1; j < i; j++)
+                                path += "/" + comp[j];
+                            child.Tag = path;
+                            child.ImageKey = "folder";
+                            child.SelectedImageKey = "folder";
+                            node.Nodes.Add(child);
+                        }
+                        node = newnode;
+                    }
+                    LoadDirectory(ltv_files.SelectedItems[0].Tag.ToString().Substring(0, ltv_files.SelectedItems[0].Tag.ToString().LastIndexOf("/")), node);
                 }
             }
+        }
+
+        private void cms_download_Opening(object sender, CancelEventArgs e)
+        {
+            ContextMenuStrip cms = (ContextMenuStrip)sender;
+            var contr = cms.SourceControl as ListView;
+            if (SearchActive && contr != null)
+                cms_download.Items[1].Visible = true;
+            else
+                cms_download.Items[1].Visible = false;
         }
 
         private void ltv_files_KeyDown(object sender, KeyEventArgs e)
@@ -302,7 +353,35 @@ namespace DropZilla
             txt_Name.ShowDropDown();
         }
 
+        private void txt_search_Enter(object sender, EventArgs e)
+        {
+            txt_search.ForeColor = System.Drawing.Color.Black;
+            txt_search.Text = "";
+        }
+
+        private void txt_search_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+                Search();
+        }
+
+        private void txt_search_Leave(object sender, EventArgs e)
+        {
+            if (txt_search.Text == "" || txt_search.Text == "Suchen...")
+            {
+                txt_search.ForeColor = System.Drawing.SystemColors.ScrollBar;
+                txt_search.Text = "Suchen...";
+            }
+            else
+                Search();
+        }
+
         #region Form resize
+        private void btn_search_LocationChanged(object sender, EventArgs e)
+        {
+            txt_search.Location = new System.Drawing.Point(btn_search.Location.X + 2, btn_search.Location.Y + 4);
+        }
+
         private void splitContainer1_SplitterMoved(object sender, SplitterEventArgs e)
         {
             btn_addFiles.Location = new System.Drawing.Point(e.SplitX + 15, 35);
@@ -311,6 +390,7 @@ namespace DropZilla
 
         private void Form1_SizeChanged(object sender, EventArgs e)
         {
+            btn_search.Location = new System.Drawing.Point(this.Size.Width - 198, 0);
             pan_perform.Size = new System.Drawing.Size(this.Size.Width - 29, this.Size.Height - 76);
         }
 
@@ -471,12 +551,12 @@ namespace DropZilla
             string[] files = (string[])objects[1];
             string localPath = (string)objects[0];
 
-            foreach (string s in files)
+            for (int i = 0; i < files.Length; i++)
             {
-                string filename = s.Substring(s.LastIndexOf("/") + 1);
+                string filename = files[i].Substring(files[i].LastIndexOf("/") + 1);
                 using (Stream stream = new FileStream(Path.Combine(localPath, filename), FileMode.Create))
                 {
-                    client.Core.Metadata.FilesAsync(s, stream);
+                    client.Core.Metadata.FilesAsync(files[i], stream);
                     System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
 
                     while (stream.Position < stream.Length || stream.Length == 0)
@@ -493,7 +573,7 @@ namespace DropZilla
                                 break;
                             }
                             int x = (int)Math.Round(((double)stream.Position / (double)stream.Length) * 100, 0);
-                            bgw_DownloadFiles.ReportProgress(x, new object[] { stream.Position, sw.ElapsedMilliseconds });
+                            bgw_DownloadFiles.ReportProgress(x, new object[] { stream.Position, sw.ElapsedMilliseconds, files.Length, i + 1});
                         }
                         Thread.Sleep(100);
                     }
@@ -506,6 +586,7 @@ namespace DropZilla
             progressBar1.Value = e.ProgressPercentage;
             object[] obj = (object[])e.UserState;
             lbl_speed.Text = ToSpeed(Convert.ToDouble(obj[0]) / (Convert.ToDouble(obj[1]) / 1000));
+            lbl_fileCount.Text = string.Format("Datei {0}", obj[2]);
         }
 
         void bgw_DownloadOnDrag_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -520,6 +601,7 @@ namespace DropZilla
             SetControlPropertyThreadSafe(progressBar1, "Value", e.ProgressPercentage);
             object[] obj = (object[])e.UserState;
             SetControlPropertyThreadSafe(lbl_speed, "Text", ToSpeed(Convert.ToDouble(obj[0]) / (Convert.ToDouble(obj[1]) / 1000)));
+            SetControlPropertyThreadSafe(lbl_fileCount, "Text", string.Format("Datei {0}", obj[2]));
         }
 
         void bgw_DownloadOnDrag_DoWork(object sender, DoWorkEventArgs e)
@@ -533,18 +615,28 @@ namespace DropZilla
                     File.Delete(dropedFilePath);
                 RefreshWindowsExplorer();
 
-                foreach (string s in FilesToDownload)
+                if (isFolderDrag)
+                {
+                    int cnt = 0;
+                    foreach(string s in FilesToDownload)
+                        cnt += GetFileCount(s, true);
+                    SetControlPropertyThreadSafe(lbl_fileCountMax, "Text", "von " + cnt.ToString());
+                }
+                else
+                    lbl_fileCountMax.Text = "von " + FilesToDownload.Count.ToString();
+                fileCounter = 0;
+                for (int i = 0; i < FilesToDownload.Count; i++)
                 {
                     if (isFolderDrag)
                     {
-                        DownloadFolder(dropPath + "\\" + s.Substring(1), s);
+                        DownloadFolder(dropPath + "\\" + FilesToDownload[i].Substring(1), FilesToDownload[i]);
                     }
                     else
                     {
-                        string filename = s.Substring(s.LastIndexOf("/") + 1);
+                        string filename = FilesToDownload[i].Substring(FilesToDownload[i].LastIndexOf("/") + 1);
                         using (Stream stream = new FileStream(Path.Combine(dropPath, filename), FileMode.Create))
                         {
-                            client.Core.Metadata.FilesAsync(s, stream);
+                            client.Core.Metadata.FilesAsync(FilesToDownload[i], stream);
                             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
 
                             while (stream.Position < stream.Length || stream.Length == 0)
@@ -561,7 +653,7 @@ namespace DropZilla
                                         break;
                                     }
                                     int x = (int)Math.Round(((double)stream.Position / (double)stream.Length) * 100, 0);
-                                    bgw_DownloadOnDrag.ReportProgress(x, new object[] { stream.Position, sw.ElapsedMilliseconds });
+                                    bgw_DownloadOnDrag.ReportProgress(x, new object[] { stream.Position, sw.ElapsedMilliseconds, i});
                                 }
                                 Thread.Sleep(100);
                             }
@@ -590,6 +682,7 @@ namespace DropZilla
             progressBar1.Value = e.ProgressPercentage;
             object[] obj = (object[])e.UserState;
             lbl_speed.Text = ToSpeed(Convert.ToDouble(obj[0]) / (Convert.ToDouble(obj[1]) / 1000));
+            lbl_fileCount.Text = string.Format("Datei {0}", obj[2]);
         }
 
         void bgw_Move_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -664,6 +757,7 @@ namespace DropZilla
             progressBar1.Value = e.ProgressPercentage;
             object[] obj = (object[])e.UserState;
             lbl_speed.Text = ToSpeed(Convert.ToDouble(obj[0]) / (Convert.ToDouble(obj[1]) / 1000));
+
         }
         #endregion
 
@@ -721,6 +815,23 @@ namespace DropZilla
             }
         }
 
+        private int GetFileCount(string path="/", bool includeSubDirs = false)
+        {
+            int count = 0;
+            var t = client.Core.Metadata.MetadataAsync(path);
+            t.Wait();
+
+            foreach (var element in t.Result.contents)
+            {
+                if (!element.is_dir)
+                    count++;
+                else if (includeSubDirs)
+                    count += GetFileCount(element.path, true);
+            }
+
+            return count;
+        }
+
         private void DownloadFolder(string localPath, string RemotePath)
         {
             //var Folder2 = client.Core.Metadata.MetadataAsync("/", list: true);
@@ -753,12 +864,13 @@ namespace DropZilla
                                 }
                                 int x = (int)Math.Round(((double)stream.Position / (double)stream.Length) * 100, 0);
                                 if (bgw_DownloadOnDrag.IsBusy)
-                                    bgw_DownloadOnDrag.ReportProgress(x, new object[] { stream.Position, sw.ElapsedMilliseconds });
+                                    bgw_DownloadOnDrag.ReportProgress(x, new object[] { stream.Position, sw.ElapsedMilliseconds, fileCounter + 1 });
                                 else
-                                    bgw_Download.ReportProgress(x, new object[] { stream.Position, sw.ElapsedMilliseconds });
+                                    bgw_Download.ReportProgress(x, new object[] { stream.Position, sw.ElapsedMilliseconds, fileCounter + 1 });
                             }
                             Thread.Sleep(100);
                         }
+                        fileCounter++;
                     }
                 }
             }
@@ -1071,14 +1183,60 @@ namespace DropZilla
             //NativeMethods.PostMessage(d, 0x101, new IntPtr(0x74), new IntPtr(1 << 31));//WM_KEYUP = 0x101
         }
 
-        private void ReportProgress(DropboxRestAPI.Services.Core.MyTaskProgressReport progress)
+        public void Search()
         {
-            if (bgw_DownloadOnDrag.IsBusy)
-                bgw_DownloadOnDrag.ReportProgress(Convert.ToInt32((Convert.ToDouble(progress.CurrentProgressAmount) / Convert.ToDouble(progress.TotalProgressAmount)) * 100));
-            else if (bgw_Download.IsBusy)
-                bgw_Download.ReportProgress(Convert.ToInt32((Convert.ToDouble(progress.CurrentProgressAmount) / Convert.ToDouble(progress.TotalProgressAmount)) * 100));
-            else if (bgw_DownloadFiles.IsBusy)
-                bgw_DownloadFiles.ReportProgress(Convert.ToInt32((Convert.ToDouble(progress.CurrentProgressAmount) / Convert.ToDouble(progress.TotalProgressAmount)) * 100));
+            SearchActive = true;
+            txt_search.AutoCompleteCustomSource.Add(txt_search.Text);
+            var t = client.Core.Metadata.SearchAsync((String)trv_folders.SelectedNode.Tag, txt_search.Text);
+            t.Wait();
+            if (t.Result.Count() == 0)
+            {
+                txt_search.SelectAll();
+                System.Windows.Forms.ToolTip ToolTip1 = new System.Windows.Forms.ToolTip();
+                ToolTip1.IsBalloon = true;
+                ToolTip1.ShowAlways = true;
+                ToolTip1.UseAnimation = false;
+                ToolTip1.UseFading = false;
+                ToolTip1.ToolTipIcon = ToolTipIcon.Info;
+                ToolTip1.Show("K", txt_search, 75, 0, 1);
+                ToolTip1.UseFading = true;
+                ToolTip1.ToolTipTitle = "Leider";
+                ToolTip1.Show("... wurden keine Dateien gefunden", txt_search, 75, txt_search.Size.Height, 3000);
+                return;
+            }
+            txt_search.Text = "Suchen...";
+            ltv_files.Items.Clear();
+            foreach (var file in t.Result)
+            {
+                if (ltv_files.View == View.LargeIcon)
+                {
+                    ListViewItem lvItem = new ListViewItem();
+                    lvItem.Text = file.Name;
+                    lvItem.Tag = file.path;
+                    lvItem.ImageKey = file.icon;
+                    DateTime dt = Convert.ToDateTime(file.modified);
+                    lvItem.ToolTipText = "Elementtyp: " + GetFileTypeDescription(file.Extension) + Environment.NewLine +
+                                        string.Format("Änderungsdatum: {0} {1}", dt.ToShortDateString(), dt.ToShortTimeString()) + Environment.NewLine +
+                                        "Größe: " + file.size + Environment.NewLine +
+                                        file.path;
+                    ltv_files.Items.Add(lvItem);
+                    ltv_files.ShowItemToolTips = true;
+                }
+                else
+                {
+                    ListViewItem lvItem = new ListViewItem();
+                    lvItem.Text = file.Name;
+                    lvItem.SubItems.Add(GetFileTypeDescription(file.Extension));
+                    DateTime dt = Convert.ToDateTime(file.modified);
+                    lvItem.SubItems.Add(string.Format("{0} {1}", dt.ToShortDateString(), dt.ToShortTimeString()));
+                    lvItem.SubItems.Add(file.size);
+                    lvItem.ToolTipText = file.path;
+                    lvItem.Tag = file.path;
+                    lvItem.ImageKey = file.icon;
+                    ltv_files.Items.Add(lvItem);
+                }
+            }
+            ltv_files.Focus();
         }
 
         public static void SetControlPropertyThreadSafe(Control control, string propertyName, object propertyValue)
@@ -1131,10 +1289,49 @@ namespace DropZilla
 
         private void UploadFile(string file, string path)
         {
-            using (Stream fileStream = System.IO.File.OpenRead(file))
+            FileInfo f = new FileInfo(file);
+            if (f.Length >= 148000000)
             {
+                using (Stream fileStream = new FileStream(file, FileMode.Open))
+                {
+                    BinaryReader bStream = new BinaryReader(fileStream);
+                    long? pos = null;
+                    string id = null;
+                    System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+                    sw.Start();
+                    Task<DropboxRestAPI.Models.Core.ChunkedUpload> t;
+                    while (fileStream.Position < fileStream.Length)
+                    {
+                        byte[] b = bStream.ReadBytes(4000000);
+                        if (pos == null || id == null)
+                            t = client.Core.Metadata.ChunkedUploadAsync(b, b.Length);
+                        else
+                            t = client.Core.Metadata.ChunkedUploadAsync(b, b.Length, uploadId: id, offset: pos);
+                        while (!t.IsCompleted)
+                        {
+                            if (this.CancelOpearation)
+                            {
+                                fileStream.Close();
+                                this.CancelOpearation = false;
+                                return;
+                            }
+                            bgw_Upload.ReportProgress(Convert.ToInt32((Convert.ToDouble(fileStream.Position) / Convert.ToDouble(fileStream.Length)) * 100), new object[] { fileStream.Position, sw.ElapsedMilliseconds });
+                            Thread.Sleep(200);
+                        }
+
+                        pos = t.Result.offset;
+                        id = t.Result.upload_id;
+                    }
+                    sw.Stop();
+                    client.Core.Metadata.CommitChunkedUploadAsync(path, id);
+                }
+            }
+            else
+            {
+                Stream fileStream = new FileStream(file, FileMode.Open);
+
                 System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
-                var uploadedFile = client.Core.Metadata.FilesPutAsync(fileStream, path);
+                client.Core.Metadata.FilesPutAsync(fileStream, path);
                 while (fileStream.Position < fileStream.Length || fileStream.Length == 0)
                 {
                     if (!sw.IsRunning)
@@ -1148,6 +1345,7 @@ namespace DropZilla
                     bgw_Upload.ReportProgress(Convert.ToInt32((Convert.ToDouble(fileStream.Position) / Convert.ToDouble(fileStream.Length)) * 100), new object[] { fileStream.Position, sw.ElapsedMilliseconds });
                     Thread.Sleep(100);
                 }
+                fileStream.Close();
             }
         }
 
@@ -1174,24 +1372,25 @@ namespace DropZilla
 
             foreach (string File in Directory.GetFiles(LocalPath))
             {
-                using (var fileStream = System.IO.File.OpenRead(File))
-                {
-                    System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
-                    client.Core.Metadata.FilesPutAsync(fileStream, newPath + "/" + Path.GetFileName(File));
-                    while (fileStream.Position < fileStream.Length || fileStream.Length == 0)
-                    {
-                        if (!sw.IsRunning)
-                            sw.Start();
-                        if (this.CancelOpearation)
-                        {
-                            fileStream.Close();
-                            this.CancelOpearation = false;
-                            break;
-                        }
-                        bgw_Upload.ReportProgress(Convert.ToInt32((Convert.ToDouble(fileStream.Position) / Convert.ToDouble(fileStream.Length)) * 100), new object[] { fileStream.Position, sw.ElapsedMilliseconds });
-                        Thread.Sleep(100);
-                    }
-                }
+                UploadFile(File, newPath + "/" + Path.GetFileName(File));
+                //using (var fileStream = System.IO.File.OpenRead(File))
+                //{
+                //    System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+                //    client.Core.Metadata.FilesPutAsync(fileStream, newPath + "/" + Path.GetFileName(File));
+                //    while (fileStream.Position < fileStream.Length || fileStream.Length == 0)
+                //    {
+                //        if (!sw.IsRunning)
+                //            sw.Start();
+                //        if (this.CancelOpearation)
+                //        {
+                //            fileStream.Close();
+                //            this.CancelOpearation = false;
+                //            break;
+                //        }
+                //        bgw_Upload.ReportProgress(Convert.ToInt32((Convert.ToDouble(fileStream.Position) / Convert.ToDouble(fileStream.Length)) * 100), new object[] { fileStream.Position, sw.ElapsedMilliseconds });
+                //        Thread.Sleep(100);
+                //    }
+                //}
             }
 
             foreach (string dir in Directory.GetDirectories(LocalPath))
@@ -1284,6 +1483,24 @@ namespace DropZilla
     }
 
     #region ListView sorter
+    static class Extension
+    {
+        public static int Count<TSource>(this IEnumerable<TSource> source)
+        {
+            ICollection<TSource> c = source as ICollection<TSource>;
+            if (c != null)
+                return c.Count;
+
+            int result = 0;
+            using (IEnumerator<TSource> enumerator = source.GetEnumerator())
+            {
+                while (enumerator.MoveNext())
+                    result++;
+            }
+            return result;
+        }
+    }
+
     class NameItemComparer : IComparer
     {
         private int col;
